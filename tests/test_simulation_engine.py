@@ -55,3 +55,66 @@ async def test_simulation_engine_auto_duration():
     status = engine.get_status()
     assert status.is_running is False
     assert status.total_sent > 0
+
+
+@pytest.mark.asyncio
+async def test_simulation_engine_batch_mode():
+    mock_emitter = AsyncMock()
+    mock_emitter.send_telemetry_batch = AsyncMock(return_value=(True, 201, 0.008))
+
+    engine = SimulationEngine(emitter=mock_emitter, tenant_id="tenant-test")
+    await engine.start(
+        scenario=SimulationScenario.ENGINE_OVERHEAT,
+        vehicle_count=2,
+        rate_per_sec=100,
+        emission_mode="BATCH",
+        branch_id="branch-batch-test",
+    )
+
+    assert engine.is_running is True
+    await asyncio.sleep(0.1)
+
+    status = engine.get_status()
+    assert status.is_running is True
+    assert status.emission_mode == "BATCH"
+    assert status.branch_id == "branch-batch-test"
+    assert status.total_sent > 0
+
+    await engine.stop()
+    assert engine.is_running is False
+    mock_emitter.send_telemetry_batch.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_simulation_engine_send_burst():
+    mock_emitter = AsyncMock()
+    mock_emitter.send_telemetry_batch = AsyncMock(return_value=(True, 201, 0.012))
+    mock_emitter.send_batch = AsyncMock(return_value=(True, 202, 0.010))
+
+    engine = SimulationEngine(emitter=mock_emitter, tenant_id="tenant-test")
+
+    # Burst in BATCH mode
+    batch_res = await engine.send_burst(
+        batch_size=25,
+        scenario=SimulationScenario.POWERTRAIN_MISFIRE,
+        emission_mode="BATCH",
+        branch_id="branch-burst-1",
+    )
+    assert batch_res["success"] is True
+    assert batch_res["status_code"] == 201
+    assert batch_res["sent_count"] == 25
+    assert batch_res["emission_mode"] == "BATCH"
+    mock_emitter.send_telemetry_batch.assert_awaited()
+
+    # Burst in STREAM mode
+    stream_res = await engine.send_burst(
+        batch_size=30,
+        scenario=SimulationScenario.HIGH_THROUGHPUT_BURST,
+        emission_mode="STREAM",
+        branch_id="branch-burst-2",
+    )
+    assert stream_res["success"] is True
+    assert stream_res["status_code"] == 202
+    assert stream_res["sent_count"] == 30
+    assert stream_res["emission_mode"] == "STREAM"
+    mock_emitter.send_batch.assert_awaited()

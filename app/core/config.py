@@ -13,7 +13,15 @@ class Settings(BaseSettings):
     # Target Ingestion Service
     INGESTION_URL: str = Field(
         default="http://localhost:8087/api/v1/iot/telemetry",
-        description="Target erp-iot-ingestion endpoint URL",
+        description="Target erp-iot-ingestion streaming endpoint URL",
+    )
+    BATCH_INGESTION_URL: str = Field(
+        default="http://localhost:8087/api/v1/telemetry-batches",
+        description="Target erp-iot-ingestion batch endpoint URL",
+    )
+    EMISSION_MODE: str = Field(
+        default="STREAM",
+        description="Default telemetry emission mode: STREAM or BATCH",
     )
     DEVICE_KEY: str = Field(
         default="test-device-key",
@@ -22,6 +30,10 @@ class Settings(BaseSettings):
     TENANT_ID: str = Field(
         default="00000000-0000-0000-0000-000000000001",
         description="Default multi-tenant UUID for simulated fleet",
+    )
+    DEFAULT_BRANCH_ID: str = Field(
+        default="00000000-0000-0000-0000-000000000002",
+        description="Default workshop branch UUID for simulated fleet",
     )
 
     # Simulation defaults

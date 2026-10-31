@@ -28,6 +28,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 2. Initialize HTTP Emitter and Simulation Engine
     emitter = HttpEmitter(
         ingestion_url=settings.INGESTION_URL,
+        batch_ingestion_url=settings.BATCH_INGESTION_URL,
         device_key=settings.DEVICE_KEY,
         timeout_seconds=settings.HTTP_TIMEOUT_SECONDS,
         max_connections=settings.HTTP_POOL_CONNECTIONS,
@@ -35,6 +36,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     engine = SimulationEngine(
         emitter=emitter,
         tenant_id=settings.TENANT_ID,
+        default_branch_id=settings.DEFAULT_BRANCH_ID,
+        default_emission_mode=settings.EMISSION_MODE,
     )
 
     app.state.emitter = emitter

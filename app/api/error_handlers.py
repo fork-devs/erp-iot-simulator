@@ -42,10 +42,11 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+        status_code = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", status.HTTP_422_UNPROCESSABLE_ENTITY)
         return create_problem_detail(
             type_uri="https://erp-automotive.pe/errors/validation-error",
-            title="Unprocessable Entity",
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            title="Unprocessable Content",
+            status_code=status_code,
             detail="Request validation failed",
             extra={"invalid_params": exc.errors()},
         )
