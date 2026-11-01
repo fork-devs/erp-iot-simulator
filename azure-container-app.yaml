@@ -1,0 +1,52 @@
+# =============================================================================
+# MANIFIESTO AZURE CONTAINER APPS (ACA) — ERP IOT SIMULATOR
+# =============================================================================
+
+apiVersion: 2024-03-01
+location: eastus2
+name: erp-iot-simulator
+type: Microsoft.App/containerApps
+properties:
+  managedEnvironmentId: /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.App/managedEnvironments/${ACA_ENVIRONMENT_NAME}
+  configuration:
+    activeRevisionsMode: Single
+    ingress:
+      external: false
+      targetPort: 8091
+      transport: auto
+      allowInsecure: false
+  template:
+    containers:
+      - name: erp-iot-simulator
+        image: ${ACR_NAME}.azurecr.io/erp-iot-simulator:latest
+        resources:
+          cpu: 0.25
+          memory: 0.5Gi
+        env:
+          - name: SERVER_PORT
+            value: "8091"
+          - name: ENVIRONMENT
+            value: "prod"
+          - name: INGESTION_URL
+            value: "http://erp-iot-ingestion:8089"
+        probes:
+          - type: Liveness
+            httpGet:
+              path: /health
+              port: 8091
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          - type: Readiness
+            httpGet:
+              path: /health
+              port: 8091
+            initialDelaySeconds: 5
+            periodSeconds: 10
+    scale:
+      minReplicas: 0
+      maxReplicas: 2
+      rules:
+        - name: http-scaling-rule
+          http:
+            metadata:
+              concurrentRequests: "50"
