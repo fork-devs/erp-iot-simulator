@@ -1,7 +1,3 @@
-# ==============================================================================
-# Multi-stage Dockerfile for erp-iot-simulator using uv (Dev/Staging Only)
-# ==============================================================================
-
 # Stage 1: Build virtual environment
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
@@ -15,7 +11,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --no-install-project --no-dev
 
-# Copy application source explicitly (avoid COPY . to prevent leaking non-essential files)
+# Copy application source explicitly
 COPY app/ /app/app/
 COPY main.py pyproject.toml uv.lock README.md /app/
 
