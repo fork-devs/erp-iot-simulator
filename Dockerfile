@@ -13,7 +13,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Copy application source
 COPY app/ /app/app/
-COPY main.py pyproject.toml uv.lock README.md /app/
+COPY main.py pyproject.toml uv.lock /app/
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
