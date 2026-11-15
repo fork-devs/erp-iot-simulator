@@ -2,7 +2,11 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, Field
 
-from app.api.deps import get_simulation_engine
+from app.api.deps import (
+    get_simulation_engine,
+    require_simulator_admin,
+    require_simulator_reader,
+)
 from app.core.config import get_settings
 from app.core.metrics import get_metrics_content, get_metrics_content_type
 from app.domain.scenarios import SimulationScenario
@@ -85,6 +89,7 @@ async def metrics() -> Response:
 async def start_simulation(
     req: StartSimulationRequest,
     engine: SimulationEngine = Depends(get_simulation_engine),
+    _claims: Dict[str, Any] = Depends(require_simulator_admin),
 ) -> Dict[str, Any]:
     """Start an asynchronous telemetry simulation run with configured parameters."""
     settings = get_settings()
@@ -121,6 +126,7 @@ async def start_simulation(
 async def trigger_burst(
     req: BurstSimulationRequest,
     engine: SimulationEngine = Depends(get_simulation_engine),
+    _claims: Dict[str, Any] = Depends(require_simulator_admin),
 ) -> Dict[str, Any]:
     """Trigger an immediate synchronous one-shot burst emission."""
     settings = get_settings()
@@ -140,6 +146,7 @@ async def trigger_burst(
 @router.post("/api/v1/simulator/stop", status_code=status.HTTP_200_OK)
 async def stop_simulation(
     engine: SimulationEngine = Depends(get_simulation_engine),
+    _claims: Dict[str, Any] = Depends(require_simulator_admin),
 ) -> Dict[str, str]:
     """Stop active simulation execution."""
     await engine.stop()
@@ -149,6 +156,7 @@ async def stop_simulation(
 @router.get("/api/v1/simulator/status", status_code=status.HTTP_200_OK)
 async def get_simulation_status(
     engine: SimulationEngine = Depends(get_simulation_engine),
+    _claims: Dict[str, Any] = Depends(require_simulator_reader),
 ) -> SimulationStatus:
     """Retrieve current operational status, real-time throughput, and message counters."""
     return engine.get_status()
