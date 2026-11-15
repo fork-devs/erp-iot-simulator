@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -45,6 +46,16 @@ class Settings(BaseSettings):
     # HTTP Client Performance
     HTTP_POOL_CONNECTIONS: int = Field(default=100, description="Maximum keep-alive connections in HTTP client pool")
     HTTP_TIMEOUT_SECONDS: float = Field(default=5.0, description="HTTP request timeout in seconds")
+
+    # JWT / JWKS Security
+    JWKS_URL: str = Field(
+        default="http://erp-auth-service:8081/.well-known/jwks.json",
+        description="JWKS endpoint for verifying RS256 access tokens",
+    )
+    JWT_ISSUER: Optional[str] = Field(
+        default=None,
+        description="Expected JWT issuer claim when strict issuer checking is enabled",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
