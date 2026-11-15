@@ -3,7 +3,11 @@ from fastapi import FastAPI
 import httpx
 import pytest
 
-from app.api.deps import get_simulation_engine
+from app.api.deps import (
+    get_simulation_engine,
+    require_simulator_admin,
+    require_simulator_reader,
+)
 from app.api.error_handlers import register_error_handlers
 from app.api.v1.simulator import router as simulator_router
 from app.domain.scenarios import SimulationScenario
@@ -46,6 +50,18 @@ def mock_engine():
 
 @pytest.fixture
 def test_app(mock_engine):
+    app = FastAPI()
+    register_error_handlers(app)
+    app.include_router(simulator_router)
+    app.dependency_overrides[get_simulation_engine] = lambda: mock_engine
+    fake_claims = {"sub": "admin-01", "tenant_id": "00000000-0000-0000-0000-000000000001", "roles": ["WORKSHOP_ADMIN"]}
+    app.dependency_overrides[require_simulator_admin] = lambda: fake_claims
+    app.dependency_overrides[require_simulator_reader] = lambda: fake_claims
+    return app
+
+
+@pytest.fixture
+def secured_test_app(mock_engine):
     app = FastAPI()
     register_error_handlers(app)
     app.include_router(simulator_router)
@@ -158,3 +174,51 @@ async def test_get_simulation_status_endpoint(test_app: FastAPI, mock_engine):
         assert data["current_throughput_mps"] == 50.0
         assert data["emission_mode"] == "STREAM"
         assert data["branch_id"] == "branch-01"
+
+
+@pytest.mark.asyncio
+async def test_simulator_requires_authentication(secured_test_app: FastAPI):
+    transport = httpx.ASGITransport(app=secured_test_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        res_start = await client.post("/api/v1/simulator/start", json={})
+        res_status = await client.get("/api/v1/simulator/status")
+        assert res_start.status_code == 401
+        assert res_status.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_simulator_rejects_insufficient_role(secured_test_app: FastAPI, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    import jwt
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_key = private_key.public_key()
+    token = jwt.encode(
+        {
+            "sub": "tech-01",
+            "tenant_id": "00000000-0000-0000-0000-000000000001",
+            "roles": ["TECHNICIAN"],
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+        },
+        private_key,
+        algorithm="RS256",
+    )
+
+    class _FakeSigningKey:
+        key = public_key
+
+    class _FakeJwkClient:
+        def get_signing_key_from_jwt(self, _tok):
+            return _FakeSigningKey()
+
+    monkeypatch.setattr("app.core.security.get_jwk_client", lambda _url: _FakeJwkClient())
+
+    transport = httpx.ASGITransport(app=secured_test_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.post(
+            "/api/v1/simulator/start",
+            headers={"Authorization": f"Bearer {token}"},
+            json={},
+        )
+        assert res.status_code == 403
