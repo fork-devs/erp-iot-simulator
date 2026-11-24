@@ -26,7 +26,7 @@ properties:
           - name: SERVER_PORT
             value: "8089"
           - name: ENVIRONMENT
-            value: "prod"
+            value: "staging"
           - name: INGESTION_URL
             value: "https://erp-iot-ingestion.thankfuldune-3cb85e4d.centralus.azurecontainerapps.io"
         probes:
